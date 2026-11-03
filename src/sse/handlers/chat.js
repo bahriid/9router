@@ -11,6 +11,8 @@ import { handleAntigravityQuotaError, clearAntigravityStrikes } from "../service
 import { getSettings } from "@/lib/localDb";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
+import { ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS, SLOW_ACCOUNT_COOLDOWN_MS } from "open-sse/config/runtimeConfig.js";
+import { awaitFirstChunk } from "@/lib/firstTokenGate.js";
 import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
 import { getTransform as getPxpipeTransform } from "@/lib/pxpipe/loader.js";
 import { appendPxpipeEvent } from "@/lib/pxpipe/events.js";
@@ -357,7 +359,23 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       }
     });
 
-    if (result.success) return result.response;
+    if (result.success) {
+      // A slow or throttled Antigravity account answers headers fast, then sends nothing for minutes.
+      // Give it a deadline for the first chunk; past it, rest the account and use the next one.
+      if (provider === "antigravity" && body?.stream === true && ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS > 0) {
+        const gated = await awaitFirstChunk(result.response, ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS);
+        if (gated.timedOut) {
+          log.warn("FALLBACK", `⇄ ACC:${credentials.connectionName} no first token in ${ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS / 1000}s → NEXT ACCOUNT`);
+          await markAccountUnavailable(credentials.connectionId, 504, "No first token in time (slow account)", provider, model, Date.now() + SLOW_ACCOUNT_COOLDOWN_MS);
+          excludeConnectionIds.add(credentials.connectionId);
+          lastError = "No first token in time";
+          lastStatus = 504;
+          continue;
+        }
+        return gated.response;
+      }
+      return result.response;
+    }
 
     // Antigravity 409/429: refresh live quota to get exact resetAt before locking
     let quotaResetMs = null;

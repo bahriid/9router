@@ -60,6 +60,12 @@ export const STREAM_FIRST_CHUNK_TIMEOUT_MS = envMs("STREAM_FIRST_CHUNK_TIMEOUT_M
 // Env: EMPTY_PEEK_DEADLINE_MS.
 export const EMPTY_PEEK_DEADLINE_MS = envMs("EMPTY_PEEK_DEADLINE_MS", 45 * 1000);
 
+// Antigravity account gate: a streaming request whose first chunk does not arrive in time is cancelled and
+// retried on the next account, and the slow account rests for the cooldown. 0 turns the gate off.
+// Env: ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS, SLOW_ACCOUNT_COOLDOWN_MS.
+export const ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS = envMs("ANTIGRAVITY_FIRST_TOKEN_TIMEOUT_MS", 30 * 1000);
+export const SLOW_ACCOUNT_COOLDOWN_MS = envMs("SLOW_ACCOUNT_COOLDOWN_MS", 10 * 60 * 1000);
+
 // Fetch connect timeout: abort if upstream doesn't return response headers within this duration
 export const FETCH_CONNECT_TIMEOUT_MS = envMs("FETCH_CONNECT_TIMEOUT_MS", 60 * 1000);
 
