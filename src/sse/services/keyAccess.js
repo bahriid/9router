@@ -22,7 +22,7 @@
 // does not grant calling a member directly by name — that needs its own entry.
 // The check runs before any credential lookup, so a denied request never
 // touches a provider account.
-import { getApiKeyByKey } from "@/lib/db/repos/apiKeysRepo.js";
+import { getApiKeyByKey, getKeyTokensSince } from "@/lib/db/repos/apiKeysRepo.js";
 import { getCombos } from "@/lib/db/repos/combosRepo.js";
 import { getModelInfo, getComboModels } from "./model.js";
 import { resolveProviderId } from "@/shared/constants/providers.js";
@@ -196,4 +196,19 @@ export async function filterModelsListForKey(ctx, list) {
     if (sets.models.has(canonicalModel(info.provider, info.model))) out.push(entry);
   }
   return out;
+}
+
+/**
+ * Per-key daily token limit (rolling 24 h, prompt + completion from usageHistory).
+ * @returns {Promise<Response|null>} a 429 Response, or null when allowed / no limit.
+ */
+export async function enforceKeyDailyLimit(request) {
+  const apiKey = extractClientApiKey(request);
+  if (!apiKey) return null;
+  const record = await getApiKeyByKey(apiKey);
+  if (!record?.dailyTokenLimit) return null;
+  const used = await getKeyTokensSince(apiKey, new Date(Date.now() - 24 * 3600_000).toISOString());
+  if (used < record.dailyTokenLimit) return null;
+  log.warn("AUTH", `key-limit: key "${record.name || record.id}" used ${used}/${record.dailyTokenLimit} tokens in 24h`);
+  return errorResponse(HTTP_STATUS.RATE_LIMITED, `Daily token limit reached (${record.dailyTokenLimit} tokens per 24h). Try again later.`);
 }

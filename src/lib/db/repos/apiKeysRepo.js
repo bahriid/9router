@@ -13,6 +13,7 @@ function rowToKey(row) {
     isActive: row.isActive === 1 || row.isActive === true,
     createdAt: row.createdAt,
     access: keyAccessFromColumns(row.accessRestricted, row.accessAllow),
+    dailyTokenLimit: row.dailyTokenLimit || 0,
   };
 }
 
@@ -67,8 +68,8 @@ export async function updateApiKey(id, data) {
     const merged = { ...rowToKey(row), ...data };
     const cols = keyAccessToColumns(merged.access);
     db.run(
-      `UPDATE apiKeys SET key = ?, name = ?, machineId = ?, isActive = ?, accessRestricted = ?, accessAllow = ? WHERE id = ?`,
-      [merged.key, merged.name, merged.machineId, merged.isActive ? 1 : 0, cols.accessRestricted, cols.accessAllow, id]
+      `UPDATE apiKeys SET key = ?, name = ?, machineId = ?, isActive = ?, accessRestricted = ?, accessAllow = ?, dailyTokenLimit = ? WHERE id = ?`,
+      [merged.key, merged.name, merged.machineId, merged.isActive ? 1 : 0, cols.accessRestricted, cols.accessAllow, Math.max(0, Math.floor(Number(merged.dailyTokenLimit) || 0)), id]
     );
     result = rowToKey(db.get(`SELECT * FROM apiKeys WHERE id = ?`, [id]));
   });
@@ -86,4 +87,14 @@ export async function validateApiKey(key) {
   const row = db.get(`SELECT isActive FROM apiKeys WHERE key = ?`, [key]);
   if (!row) return false;
   return row.isActive === 1 || row.isActive === true;
+}
+
+// Prompt + completion tokens this key used since `sinceIso`.
+export async function getKeyTokensSince(key, sinceIso) {
+  const db = await getAdapter();
+  const row = db.get(
+    `SELECT COALESCE(SUM(promptTokens + completionTokens), 0) AS used FROM usageHistory WHERE apiKey = ? AND timestamp >= ?`,
+    [key, sinceIso]
+  );
+  return row?.used || 0;
 }
