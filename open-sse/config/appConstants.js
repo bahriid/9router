@@ -195,6 +195,7 @@ export const ANTIGRAVITY_PROMPT_REWRITES = [
   { from: /^[ \t]*If a tool, install, or network call fails and blocks the real path[^\n]*(?:\r?\n)?/gm, to: "" },
   { from: /^[ \t]*When the user asks you to build, run, or verify something, the deliverable is a working artifact[^\n]*(?:\r?\n)?/gm, to: "" },
   { from: /^[ \t]*For help with Hermes Agent itself[^\n]*(?:\r?\n)?/gm, to: "" },
+  { from: /^[ \t]*Mid-turn, the user can steer you: Hermes delivers their message[^\n]*(?:\r?\n)?/gm, to: "" },
   { from: /You are Hermes(?: Agent)?(?:,\s*(?:an intelligent AI assistant|an AI assistant|an AI agent))?(?:,?\s*(?:built|created)\s+by\s+Nous Research)?\./gi, to: "You are an AI assistant." },
   // Claude Code prepends this line to its system prompt. The Claude-format translator strips it,
   // but OpenAI-format clients (e.g. proxies that convert Claude Code to /v1/chat/completions)
