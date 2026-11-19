@@ -97,7 +97,9 @@ const muse = {
       throw new Error("Muse Code key mint returned invalid JSON");
     }
 
-    if (payload.is_subs_active === false) {
+    // Free-plan accounts come back is_subs_active:false but still get a working key
+    // (the official muse CLI runs on them), so only stop when no key came back.
+    if (payload.is_subs_active === false && !payload.api_key) {
       throw new Error("Muse Code subscription is inactive — activate it on muse.ai first");
     }
     const actionUrl = payload.action_url || payload.require_payment_action_url;
