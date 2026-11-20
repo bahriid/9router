@@ -68,7 +68,9 @@ export async function convertResponsesStreamToJson(stream) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+      // Some upstreams (Muse) frame SSE with CRLF; without this the whole stream
+      // is one "message" and only its first event (response.created) is read.
+      buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, "\n");
       const messages = buffer.split("\n\n");
       buffer = messages.pop() || "";
 
