@@ -27,8 +27,9 @@ function processSSEMessage(msg, state) {
     state.created = parsed.response?.created_at || state.created;
   } else if (eventType === "response.output_item.done") {
     state.items.set(parsed.output_index ?? 0, parsed.item);
-  } else if (eventType === "response.completed" || eventType === "response.done") {
-    state.status = "completed";
+  } else if (eventType === "response.completed" || eventType === "response.done" || eventType === "response.incomplete") {
+    // incomplete = hit max_output_tokens (reasoning models can spend it all); still billed, keep usage
+    state.status = eventType === "response.incomplete" ? "incomplete" : "completed";
     if (parsed.response?.usage) {
       state.usage.input_tokens = parsed.response.usage.input_tokens || 0;
       state.usage.output_tokens = parsed.response.usage.output_tokens || 0;
