@@ -34,6 +34,9 @@ export default {
     validateUrl: "https://api.meta.ai/v1/models",
     modelsUrl: "https://api.meta.ai/v1/models",
     auth: { combined: true, header: "Authorization", scheme: "bearer", hooks: ["museHeaders"] },
+    // stream:false on /v1/responses comes back as an in_progress stub (empty, 0 usage)
+    // while the run is still billed; stream upstream and fold SSE into JSON instead.
+    forceStream: true,
   },
   // Multi-endpoint: Meta accepts Chat Completions and Responses wire formats on
   // the same key (https://dev.meta.ai/docs/protocols). Muse Spark reasoning
